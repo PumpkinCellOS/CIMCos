@@ -7,12 +7,13 @@ bool Builder::build()
 {
     std::cout << "Building semantic tree..." << std::endl;
 
+    bool success = true;
     for(auto& op: m_block->members)
     {
-        op->execute(m_data);
+        success &= op->execute(m_data);
     }
 
-    return true;
+    return success;
 }
 
 void Builder::display()
