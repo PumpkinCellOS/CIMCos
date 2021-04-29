@@ -12,7 +12,7 @@ class RuntimeData;
 class Opcode
 {
 public:
-    virtual std::string payload(const RuntimeData&) const { return "\xff"; };
+    virtual std::string payload(const RuntimeData&) const { return "\xff"; }
     virtual std::string display() const = 0;
 };
 
@@ -41,19 +41,6 @@ public:
     virtual std::string display() const { return "Invalid"; }
 };
 
-class Label : public Opcode
-{
-public:
-    Label(std::string name)
-    : m_name(name) {}
-
-    virtual std::string payload(const RuntimeData&) const override { return ""; }
-    virtual std::string display() const { return "Label " + m_name + ":"; }
-
-private:
-    std::string m_name;
-};
-
 class Jump : public Opcode
 {
 public:
@@ -77,6 +64,19 @@ public:
 private:
     std::shared_ptr<Operand> m_destination;
     Condition m_condition;
+};
+
+class FlagEnableOrDisable : public Opcode
+{
+public:
+    FlagEnableOrDisable(std::shared_ptr<Operand> flag, bool enable)
+    : m_flag(flag), m_enable(enable) {}
+
+    virtual std::string display() const { return std::string("Flag") + (m_enable ? "Enable " : "Disable ") + m_flag->display(); }
+
+private:
+    std::shared_ptr<Operand> m_flag;
+    bool m_enable;
 };
 
 class Data : public Opcode

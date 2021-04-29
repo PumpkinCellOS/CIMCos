@@ -13,8 +13,7 @@ bool assemble_to_obj(convert::InputFile& input, convert::OutputFile& output, con
 {
     std::cout << "assemble_to_obj" << std::endl;
     Lexer lexer;
-    bool success = lexer.from_stream(input, options);
-    if(!success)
+    if(!lexer.from_stream(input, options))
         return false;
 
     auto block = assembler::parse_block(lexer);
@@ -24,12 +23,12 @@ bool assemble_to_obj(convert::InputFile& input, convert::OutputFile& output, con
     std::cout << block->display_block(0) << std::endl;
 
     std::cout << "Semantic analysis!" << std::endl;
+
     Builder builder(block);
-    if(!builder.build())
-        return false;
+    bool success = builder.build();
 
     builder.display();
-    return true;
+    return success;
 }
 
 namespace parse_helpers
