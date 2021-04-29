@@ -49,16 +49,14 @@ _1:
     _fdsbl IF ; Disable IRQs.
 
     ; Check image magic (0x50 - P) and arch (0x80 - cx16)
-    mov bx, 0x0400
-    mov dx, [bx]
+    mov dx, [0x0400]
     cmp dx, 0x5080
     je valid_boot_image
     _emu_dbg "Invalid boot image"
     hlt
 
 valid_boot_image:
-    mov bx, 0x0402
-    mov dx, [bx] ; dx contains OS entry point
+    mov dx, [0x0402] ; dx contains OS entry point
 
     mov ax, dx
     jmp ax
