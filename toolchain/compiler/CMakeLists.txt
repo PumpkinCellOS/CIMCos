@@ -2,6 +2,7 @@ set(SOURCES
     "asm/ast.cpp"
     "asm/builder.cpp"
     "asm/directive.cpp"
+    "asm/generator.cpp"
     "asm/instruction.cpp"
     "asm/lexer.cpp"
     "asm/opcodes.cpp"

@@ -71,7 +71,7 @@ bool InstructionOperation::execute(RuntimeData& data) const
     if(!opcode)
     {
         opcode = std::make_shared<opcodes::Invalid>();
-        BUILDER_ERROR(&m_instruction, "invalid opcode");
+        BUILDER_WARNING(&m_instruction, "invalid opcode");
     }
 
     data.current_section()->instructions.push_back(opcode);

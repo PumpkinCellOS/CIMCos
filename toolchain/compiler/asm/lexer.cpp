@@ -1,6 +1,7 @@
 #include "lexer.h"
 
 #include "builder.h"
+#include "generator.h"
 #include "../cpp/lexer.h"
 #include "parser.h"
 
@@ -26,8 +27,10 @@ bool assemble_to_obj(convert::InputFile& input, convert::OutputFile& output, con
 
     Builder builder(block);
     bool success = builder.build();
-
     builder.display();
+
+    Generator generator(builder.runtime_data());
+    success &= generator.generate(output);
     return success;
 }
 
