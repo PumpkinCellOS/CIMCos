@@ -5,7 +5,7 @@ typedef unsigned int u16;
 
 #define reg(x) __attribute((__reg(x)))
 
-inline void out8(const reg(imm) u8 port, const reg(al|imm) u8 data)
+inline void out8(const reg(imm) u8 port, const reg(al,imm) u8 data)
 {
     asm(
         "out8 port, data\n"
@@ -13,7 +13,7 @@ inline void out8(const reg(imm) u8 port, const reg(al|imm) u8 data)
     );
 }
 
-inline void out16(const reg(imm) u8 port, const reg(ax|imm) u16 data)
+inline void out16(const reg(imm) u8 port, const reg(ax,imm) u16 data)
 {
     asm(
         "out16 port, data\n"
