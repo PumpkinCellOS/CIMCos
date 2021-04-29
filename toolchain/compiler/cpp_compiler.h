@@ -57,6 +57,15 @@
             std::cout << "EOF" << std::endl; \
     } while(0)
 
+#define GENERATOR_ERROR(message) do { \
+        std::cout << "\e[31merror:\e[0m " << (message) << std::endl; \
+        return {}; \
+    } while(0)
+
+#define GENERATOR_WARNING(message) do { \
+        std::cout << "\e[93mwarning:\e[0m " << (message) << std::endl; \
+    } while(0)
+
 namespace cpp_compiler
 {
 

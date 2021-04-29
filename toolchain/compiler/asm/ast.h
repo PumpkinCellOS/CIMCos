@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../cpp/parser.h"
+#include "lexer.h"
 
 #include <vector>
 #include <string>
@@ -88,6 +89,17 @@ public:
     virtual std::string display() const override
     {
         return "NameIdentifier[" + name + "]";
+    }
+};
+
+class NumberIdentifier : public Identifier
+{
+public:
+    size_t number;
+
+    virtual std::string display() const override
+    {
+        return "NumberIdentifier[" + std::to_string(number) + "]";
     }
 };
 

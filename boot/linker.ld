@@ -5,6 +5,8 @@ size 512
 output "rom.exe"
 sections {
     .text
-    .ivt
+    .data
 }
-restrict .data, .bss
+symbols {
+    _start=0x0
+}

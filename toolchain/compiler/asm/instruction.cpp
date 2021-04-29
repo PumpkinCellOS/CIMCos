@@ -43,17 +43,17 @@ bool InstructionOperation::execute(RuntimeData& data) const
             if(condition == "MP")
                 opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::None);
             else if(condition == "Z" || condition == "E")
-                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::None);
+                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::Equal);
             else if(condition == "G")
-                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::None);
+                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::Greater);
             else if(condition == "L")
-                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::None);
+                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::Less);
             else if(condition == "NE" || condition == "NZ")
-                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::None);
+                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::NotEqual);
             else if(condition == "GE")
-                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::None);
+                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::GreaterOrEqual);
             else if(condition == "LE")
-                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::None);
+                opcode = std::make_shared<opcodes::Jump>(arg1, opcodes::Jump::LessOrEqual);
             else
                 BUILDER_ERROR(&m_instruction, "invalid jump condition");
         }

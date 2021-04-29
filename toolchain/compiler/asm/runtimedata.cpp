@@ -35,15 +35,59 @@ bool RuntimeData::set_symbol_type(std::string name, Symbol::Type type)
     return true;
 }
 
+uint16_t RuntimeData::resolve_operand(std::shared_ptr<Operand> operand, size_t offset)
+{
+    // Absolute adress
+    try
+    {
+        if(operand->type == Operand::Type::DecNumber)
+            return std::stoi(operand->value, nullptr, 10);
+        else if(operand->type == Operand::Type::HexNumber)
+            return std::stoi(operand->value, nullptr, 16);
+    }
+    catch(...)
+    {
+        // ICE?
+        GENERATOR_ERROR("internal compiler error: invalid number in resolve_operand");
+    }
+
+    // Label
+    if(operand->type == Operand::Type::Name)
+    {
+        // Offsets are needed because jmps are relative to beginning of instruction.
+        // See emulator/Executor.cpp:45.
+        m_current_section->add_replace_entry(offset + 1, operand->value);
+        return offset; // It should be replaced in replace_all_replace_entries!
+    }
+    else
+    {
+        GENERATOR_ERROR("invalid operand type");
+    }
+
+    return offset;
+}
+
+bool RuntimeData::Section::replace_all_replace_entries(std::string& payload)
+{
+    // Display for now
+    std::cout << "Replace entries for ." << name << ":" << std::endl;
+    for(auto& entry: replace_entries)
+    {
+        std::cout << "  " << entry.second << " at 0x" << std::hex << entry.first << std::dec << std::endl;
+        size_t label_index = labels[entry.second];
+        int8_t new_value = instruction_adresses[label_index] - entry.first; // Ignore instruction opcode
+        std::cout << "    label index: 0x" << std::hex << label_index << ", new value: 0x" << (int)new_value << std::dec << std::endl;
+
+        // Offsets are needed because jmps are relative to beginning of instruction.
+        // See emulator/Executor.cpp:45.
+        payload.at(entry.first) = new_value + 1;
+    }
+
+    return true;
+}
+
 void RuntimeData::display() const
 {
-    auto hex_display = [](size_t offset, std::string data)
-    {
-        std::cout << "      " << offset << ": ";
-        for(unsigned c: data)
-            std::cout << std::hex << (unsigned)(c & 0xFF) << " ";
-    };
-
     std::cout << "Sections:" << std::endl;
     for(auto& it: m_sections)
     {
@@ -52,14 +96,13 @@ void RuntimeData::display() const
         std::cout << "    Dump:" << std::endl;
         for(auto& op: it.second.instructions)
         {
-            hex_display(offset, op->payload(*this));
-            std::cout << op->display() << std::endl;
+            std::cout << "      " << op->display() << std::endl;
             offset++;
         }
         std::cout << "    Labels:" << std::endl;
         for(auto& label: it.second.labels)
         {
-            std::cout << "      " << label.first << ": " << label.second << std::endl;
+            std::cout << "      " << label.first << ": 0x" << std::hex << label.second << std::dec << std::endl;
             offset++;
         }
     }

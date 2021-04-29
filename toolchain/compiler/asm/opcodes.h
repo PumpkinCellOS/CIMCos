@@ -12,7 +12,7 @@ class RuntimeData;
 class Opcode
 {
 public:
-    virtual std::string payload(const RuntimeData&) const { return "\xff"; }
+    virtual bool generate(std::string& payload, RuntimeData&, size_t) const { payload = "\xff"; return true; }
     virtual std::string display() const = 0;
 };
 
@@ -25,7 +25,7 @@ public:
     NoArgument(unsigned char id)
     : m_id(id) {}
 
-    virtual std::string payload(const RuntimeData&) const override { return std::string((char*)&m_id, 1); }
+    virtual bool generate(std::string& payload, RuntimeData&, size_t) const { payload = std::string((char*)&m_id, 1); return true; }
     virtual std::string display() const { return "NoArgument " + std::to_string((unsigned)m_id); }
 
 private:
@@ -46,12 +46,12 @@ class Jump : public Opcode
 public:
     enum Condition
     {
-        None = 0x70,
-        Equal = 0x72,
+        None = 0x71,
+        Equal,
         Greater,
         Less,
         NotEqual,
-        GreateOrEqual,
+        GreaterOrEqual,
         LessOrEqual,
         Invalid
     };
@@ -59,6 +59,7 @@ public:
     Jump(std::shared_ptr<Operand> destination, Condition condition)
     : m_destination(destination), m_condition(condition) {}
 
+    virtual bool generate(std::string& payload, RuntimeData&, size_t) const override;
     virtual std::string display() const { return "Jump" + std::to_string(m_condition) + " -> " + m_destination->display(); }
 
 private:

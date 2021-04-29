@@ -1,6 +1,3 @@
-stack := 0x0180
-_start := 0x0
-
 HDD_IO := 0x02
 HDD_CMD_GET_ID := 0x08
 HDD_CMD_READ_BY_NAME := 0x14

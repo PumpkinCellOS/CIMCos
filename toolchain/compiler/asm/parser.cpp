@@ -69,7 +69,7 @@ std::shared_ptr<Operand> parse_operand(Lexer& lexer)
     return operand;
 }
 
-// identifier ::= [ relative-address | name ]
+// identifier ::= relative-address | name | number
 std::shared_ptr<Identifier> parse_identifier(Lexer& lexer)
 {
     std::shared_ptr<Identifier> identifier;
@@ -78,16 +78,36 @@ std::shared_ptr<Identifier> parse_identifier(Lexer& lexer)
     if(!identifier)
     {
         lexer.set_index(pos);
-        auto name_identifier = std::make_shared<NameIdentifier>();
-        auto name_token = lexer.consume_token_of_type(Token::Name);
+        auto name_token = lexer.consume_token_of_types({Token::Name, Token::DecNumber, Token::HexNumber});
         if(!name_token)
         {
             lexer.set_index(pos);
             return nullptr;
         }
 
-        name_identifier->name = name_token->value;
-        identifier = name_identifier;
+        if(name_token->type == Token::Name)
+        {
+            auto name_identifier = std::make_shared<NameIdentifier>();
+            name_identifier->name = name_token->value;
+            identifier = name_identifier;
+        }
+        else
+        {
+            auto number_identifier = std::make_shared<NumberIdentifier>();
+            try
+            {
+                if(name_token->type == Token::HexNumber)
+                    number_identifier->number = std::stoi(name_token->value, nullptr, 16);
+                else
+                    number_identifier->number = std::stoi(name_token->value, nullptr, 10);
+            }
+            catch(...)
+            {
+                PARSE_ERROR(lexer, "invalid number in identifier");
+            }
+
+            identifier = number_identifier;
+        }
     }
     return identifier;
 }
@@ -103,8 +123,7 @@ std::shared_ptr<RelativeAddress> parse_relative_address(Lexer& lexer)
     if(!sign)
         return nullptr;
 
-    // TODO: Support hex numbers
-    auto offset_token = lexer.consume_token_of_type(Token::DecNumber);
+    auto offset_token = lexer.consume_token_of_types({Token::DecNumber, Token::HexNumber});
     if(!offset_token)
         return nullptr;
 
@@ -112,7 +131,10 @@ std::shared_ptr<RelativeAddress> parse_relative_address(Lexer& lexer)
 
     try
     {
-        offset = std::stoi(offset_token->value);
+        if(offset_token->type == Token::HexNumber)
+            offset = std::stoi(offset_token->value, nullptr, 16);
+        else
+            offset = std::stoi(offset_token->value, nullptr, 10);
     }
     catch(...)
     {
