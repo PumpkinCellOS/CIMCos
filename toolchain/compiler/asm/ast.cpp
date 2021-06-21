@@ -23,9 +23,11 @@ bool Directive::execute(RuntimeData& data) const
     return operation->execute(data);
 }
 
-bool Assignment::execute(RuntimeData&) const
+bool Assignment::execute(RuntimeData& data) const
 {
-    //std::cout << "Assignment::execute " << display() << std::endl;
+    std::cout << "Assignment::execute " << display() << std::endl;
+    if(!data.add_assignment(identifier->name, operand))
+        BUILDER_ERROR(this, "duplicate assignment " + identifier->name);
     return true;
 }
 

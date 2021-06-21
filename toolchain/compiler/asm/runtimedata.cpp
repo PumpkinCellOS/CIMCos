@@ -86,6 +86,23 @@ bool RuntimeData::Section::replace_all_replace_entries(std::string& payload)
     return true;
 }
 
+bool RuntimeData::add_assignment(std::string name, std::shared_ptr<Operand> value)
+{
+    auto it = m_assignments.find(name);
+    if(it != m_assignments.end())
+        return false;
+    m_assignments.insert(std::make_pair(name, value));
+    return true;
+}
+
+std::shared_ptr<Operand> RuntimeData::resolve_assignment(std::string name) const
+{
+    auto it = m_assignments.find(name);
+    if(it == m_assignments.end())
+        return nullptr;
+    return it->second;
+}
+
 void RuntimeData::display() const
 {
     std::cout << "Sections:" << std::endl;
@@ -113,6 +130,12 @@ void RuntimeData::display() const
         auto section = it.second.section;
         std::cout << "  " << it.first   << " type " << (int)it.second.type
                   << " section ." << (section ? section->name : "<None>") << std::endl;
+    }
+
+    std::cout << "Assignments:" << std::endl;
+    for(auto& it: m_assignments)
+    {
+        std::cout << "  " << it.first << " := " << it.second->display() << std::endl;
     }
 }
 

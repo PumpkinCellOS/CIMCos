@@ -46,12 +46,15 @@ public:
     std::map<std::string, Section>& sections() { return m_sections; }
     void add_relocation_entry(size_t value) { m_relocation_entries.push_back(value); }
     uint16_t resolve_operand(std::shared_ptr<Operand> operand, size_t offset);
+    bool add_assignment(std::string name, std::shared_ptr<Operand> value);
+    std::shared_ptr<Operand> resolve_assignment(std::string name) const;
 
     void display() const;
 
 private:
     std::map<std::string, Section> m_sections;
     std::map<std::string, Symbol> m_symbols;
+    std::map<std::string, std::shared_ptr<Operand>> m_assignments;
     std::vector<size_t> m_relocation_entries;
     Section* m_current_section = nullptr;
 };
