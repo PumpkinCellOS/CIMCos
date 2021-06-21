@@ -40,14 +40,16 @@
         std::cout << "  near '" << nd << "'" << std::endl; \
     } while(0)
 
-#define BUILDER_ERROR(op, message) do { \
+#define BUILDER_ERROR_RC(op, message, rc) do { \
         std::cout << "\e[31merror:\e[0m " << (message) << std::endl << "  node " << (op)->display_name() << ", near "; \
         if(op) \
             std::cout << (op)->display() << std::endl; \
         else \
             std::cout << "EOF" << std::endl; \
-        return {}; \
+        return rc; \
     } while(0)
+
+#define BUILDER_ERROR(op, message) BUILDER_ERROR_RC(op, message, {})
 
 #define BUILDER_WARNING(op, message) do { \
         std::cout << "\e[93mwarning:\e[0m " << (message) << std::endl << "  node " << (op)->display_name() << ", near "; \
