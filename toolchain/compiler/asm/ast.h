@@ -74,6 +74,20 @@ public:
     {
         return "GenericOperand<" + type_to_string() + ">(" + value + ")";
     }
+
+    bool can_resolve_as_number() const
+    {
+        return type == Type::DecNumber || type == Type::HexNumber;
+    }
+
+    int resolve_as_number() const
+    {
+        if(type == Type::DecNumber)
+            return std::stoi(value);
+        else if(type == Type::HexNumber)
+            return std::stoi(value, nullptr, 16);
+        return 0;
+    }
 };
 
 // identifier ::= [ name | relative-address ]

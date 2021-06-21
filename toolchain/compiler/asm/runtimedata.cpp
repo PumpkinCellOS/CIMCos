@@ -52,6 +52,7 @@ uint16_t RuntimeData::resolve_operand(std::shared_ptr<Operand> operand, size_t o
     }
 
     // Label
+    // TODO: Allow specifying what to do with name identifiers (labels OR assignments?)
     if(operand->type == Operand::Type::Name)
     {
         // Offsets are needed because jmps are relative to beginning of instruction.
@@ -138,5 +139,36 @@ void RuntimeData::display() const
         std::cout << "  " << it.first << " := " << it.second->display() << std::endl;
     }
 }
+
+bool RuntimeData::is_reserved_name(std::string name) const
+{
+    const char* reserved_names[] = {
+        "al", "bl", "cl", "dl", // 8-bit registers
+        "ax", "bx", "cx", "dx", // 16-bit registers
+        "IF", "GF", "OF", "ZF", "NF", "PF", "EF", // Flags
+    };
+
+    for(auto& reserved_name: reserved_names)
+    {
+        if(name == reserved_name)
+            return true;
+    }
+    return false;
+};
+
+std::shared_ptr<Operand> RuntimeData::resolve_operand_with_assignments(std::shared_ptr<Operand> operand) const
+{
+    if(operand->type == Operand::Type::Name && !is_reserved_name(operand->value))
+    {
+        auto resolved_operand = resolve_assignment(operand->value);
+        if(!resolved_operand)
+            GENERATOR_ERROR("invalid name operand: " + operand->value);
+        return resolved_operand;
+    }
+    else
+    {
+        return operand;
+    }
+};
 
 }

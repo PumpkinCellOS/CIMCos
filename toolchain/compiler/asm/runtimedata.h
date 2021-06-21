@@ -48,6 +48,8 @@ public:
     uint16_t resolve_operand(std::shared_ptr<Operand> operand, size_t offset);
     bool add_assignment(std::string name, std::shared_ptr<Operand> value);
     std::shared_ptr<Operand> resolve_assignment(std::string name) const;
+    bool is_reserved_name(std::string name) const;
+    std::shared_ptr<Operand> resolve_operand_with_assignments(std::shared_ptr<Operand> operand) const;
 
     void display() const;
 

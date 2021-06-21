@@ -13,35 +13,6 @@ bool InstructionOperation::execute(RuntimeData& data) const
 
     std::shared_ptr<Opcode> opcode;
 
-    auto is_reserved_name = [&](std::string name) {
-        const char* reserved_names[] = {
-            "al", "bl", "cl", "dl", // 8-bit registers
-            "ax", "bx", "cx", "dx", // 16-bit registers
-            "IF", "GF", "OF", "ZF", "NF", "PF", "EF", // Flags
-        };
-
-        for(auto& reserved_name: reserved_names)
-        {
-            if(name == reserved_name)
-                return true;
-        }
-        return false;
-    };
-
-    auto resolve_operand = [&](std::shared_ptr<Operand> operand)->std::shared_ptr<Operand> {
-        if(operand->type == Operand::Type::Name && !is_reserved_name(operand->value))
-        {
-            auto resolved_operand = data.resolve_assignment(operand->value);
-            if(!resolved_operand)
-                BUILDER_ERROR(&m_instruction, "invalid name operand: " + operand->value);
-            return resolved_operand;
-        }
-        else
-        {
-            return operand;
-        }
-    };
-
     // 0 arguments
     if(m_instruction.members.size() == 0)
     {
@@ -96,6 +67,84 @@ bool InstructionOperation::execute(RuntimeData& data) const
         else if(mnemonic == "SKIP")
             opcode = std::make_shared<opcodes::Skip>(arg1);
         // TODO: PUSH, POP, NEG, NOT, CALL, LIVT, INT, INC, DEC, PGE, TRC
+    }
+    else if(m_instruction.members.size() == 2)
+    {
+        auto arg1 = m_instruction.members[0];
+        auto arg2 = m_instruction.members[1];
+
+        auto resolve_io_port = [&]()->int16_t {
+            int16_t port;
+            std::string resolved_arg1;
+            if(arg1->type == Operand::Type::Name)
+            {
+                resolved_arg1 = data.resolve_operand_with_assignments(arg1)->value;
+            }
+            else
+            {
+                resolved_arg1 = arg1->value;
+            }
+
+            try
+            {
+                port = std::stoi(resolved_arg1);
+            }
+            catch(...)
+            {
+                BUILDER_ERROR_RC(&m_instruction, "I/O port should be a number, it is '" + resolved_arg1 + "'", -1);
+            }
+            return port;
+        };
+
+        if(mnemonic.find("OUT") == 0)
+        {
+            int16_t port = resolve_io_port();
+            if(port == -1)
+                return {};
+
+            auto resolved_arg2 = data.resolve_operand_with_assignments(arg2);
+            if(!resolved_arg2)
+                return {};
+
+            if(mnemonic.size() <= 3)
+                BUILDER_ERROR(&m_instruction, "no size given to OUT");
+            std::string size = mnemonic.substr(3);
+            if(size == "8")
+            {
+                opcode = std::make_shared<opcodes::InputOutput>(opcodes::InputOutput::Output, opcodes::InputOutput::_8Bits, port, resolved_arg2);
+            }
+            else if(size == "16")
+            {
+                opcode = std::make_shared<opcodes::InputOutput>(opcodes::InputOutput::Output, opcodes::InputOutput::_16Bits, port, resolved_arg2);
+            }
+            else
+                BUILDER_ERROR(&m_instruction, "invalid size given to OUT (" + size + ")");
+        }
+        else if(mnemonic.find("IN") == 0)
+        {
+            int16_t port = resolve_io_port();
+            if(port == -1)
+                return {};
+
+            auto resolved_arg2 = data.resolve_operand_with_assignments(arg2);
+            if(!resolved_arg2)
+                return {};
+                
+            if(mnemonic.size() <= 2)
+                BUILDER_ERROR(&m_instruction, "no size given to IN");
+            std::string size = mnemonic.substr(2);
+            if(size == "8")
+            {
+                opcode = std::make_shared<opcodes::InputOutput>(opcodes::InputOutput::Input, opcodes::InputOutput::_8Bits, port, resolved_arg2);
+            }
+            else if(size == "16")
+            {
+                opcode = std::make_shared<opcodes::InputOutput>(opcodes::InputOutput::Input, opcodes::InputOutput::_16Bits, port, resolved_arg2);
+            }
+            else
+                BUILDER_ERROR(&m_instruction, "invalid size given to IN (" + size + ")");
+        }
+        // TODO: MOV, CMP, ADD, SUB, AND, OR, SHL, SHR, XOR, XCHG
     }
 
     if(!opcode)
