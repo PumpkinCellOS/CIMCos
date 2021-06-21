@@ -179,3 +179,8 @@ void Executor::_INSN_CPUID()
 {
     m_control.cpuid();
 }
+
+void Executor::_INSN_PLACEHOLDER()
+{
+    // noop
+}

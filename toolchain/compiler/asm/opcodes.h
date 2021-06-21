@@ -12,7 +12,12 @@ class RuntimeData;
 class Opcode
 {
 public:
-    virtual bool generate(std::string& payload, RuntimeData&, size_t) const { payload = "\xff"; return true; }
+    virtual bool generate(std::string& payload, RuntimeData&, size_t) const 
+    {
+        // Placeholder/NOOP
+        payload = 0xd4;
+        return true; 
+    }
     virtual std::string display() const = 0;
 };
 
@@ -36,7 +41,7 @@ class Invalid : public NoArgument
 {
 public:
     Invalid()
-    : NoArgument(0x7e) {}
+    : NoArgument(0xd4) {}
 
     virtual std::string display() const { return "Invalid"; }
 };

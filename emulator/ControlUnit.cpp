@@ -224,7 +224,10 @@ void ControlUnit::do_insn(Bitfield opcode)
         bool op2 = opcode[7];
 
         if(op1 == 0b11 && op2 == false)
+        {
+            error("CU") << "Invalid Instruction 1!";
             exit(-1);
+        }
 
         auto& reg = common_source(op1);
         if(op2)
@@ -311,7 +314,12 @@ void ControlUnit::do_insn(Bitfield opcode)
                 break;
         }
     }
-    // TODO: XOR, Memory & Stack Store, dx Store Special, Exchange, Extended, Store Stack
+    // TODO: XOR, Memory & Stack Store, dx Store Special, Exchange 0xd0-0dx3
+    else if(opcode.data() == 0xd4)
+    {
+        m_executor._INSN_PLACEHOLDER();
+    }
+    // TODO: Exchange 0xd5-0xdf, Extended, Store Stack
     else
     {
         error("CU") << "Invalid opcode: " << std::hex << (int)opcode.data() << std::dec;
