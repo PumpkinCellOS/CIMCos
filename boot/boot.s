@@ -16,7 +16,7 @@ _start:
     ;   0x0180-0x01FF (128B) Stack
 
     ; Setup IVT
-    livt 0x0160
+    livt ivt
 
     ; Find a file on disk called "/sys/krnl.EXE".
 
@@ -68,7 +68,8 @@ hdd_entry:
     mov dx, 0x0 ; Note that we cannot use global variables here, so we use 'dx'.
     iret
 
-.section .ivt
+.section .data
+ivt:
     data 0x0B
     skip 22
     data hdd_entry

@@ -43,14 +43,14 @@ private:
 class CPU : public Cx16Master, public PMICapableDevice
 {
 public:
-    CPU(std::istream& rom_image)
-    : m_rom(rom_image) {}
+    CPU(std::istream& rom_image, size_t rom_image_size)
+    : m_rom(rom_image, rom_image_size) {}
 
     class ROMMemory : Memory
     {
     public:
-        ROMMemory(std::istream& image)
-        : Memory(384) { init_with_image(image); }
+        ROMMemory(std::istream& image, size_t size = 384)
+        : Memory(size) { init_with_image(image); }
 
         virtual std::string name() const override { return "ROM"; }
 
@@ -61,7 +61,7 @@ public:
         bool m_unlocked = true;
     };
 
-    virtual std::string name() const { return "PumpkinCellOS cx16 Emulated CPU"; }
+    virtual std::string name() const override { return "PumpkinCellOS cx16 Emulated CPU"; }
 
     virtual void boot() override;
 
@@ -72,8 +72,8 @@ public:
     // TODO
     u16 map_virtual_to_physical(u16 virt) const { return virt; }
 
-    void pmi_boot();
-    void pmi_reboot();
+    void pmi_boot() override;
+    void pmi_reboot() override;
 
     CPUIOBus* slave() { return (CPUIOBus*)m_slave; }
     ROMMemory& rom() { return m_rom; }

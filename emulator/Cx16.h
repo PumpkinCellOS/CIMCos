@@ -19,13 +19,13 @@ public:
     virtual void boot() { error(name()) << "Dummy boot called!"; }
     void power_on();
 
-    void shutdown() { m_device_destroyed.store(true); }
-    bool running() const { return m_device_destroyed.load(); }
+    void shutdown() { info(name()) << "Shutdown!"; m_device_destroyed.store(true); }
+    bool running() const { return !m_device_destroyed.load(); }
 
 protected:
     Bus* m_bus = nullptr;
     std::thread m_worker;
-    std::atomic_bool m_device_destroyed;
+    std::atomic_bool m_device_destroyed { false };
 };
 
 class Bus : public Device
@@ -236,7 +236,7 @@ class Cx16InterruptController : public Cx16ConventionalDevice
 public:
     void register_device(u8 irq, std::shared_ptr<Cx16Device> device);
 
-    virtual void boot();
+    virtual void boot() override;
 
     virtual bool irq_raised() const
     {
@@ -248,14 +248,14 @@ public:
     virtual std::string name() const override { return "Cx16 Interrupt Controller"; }
 
     // TODO: Commands
-    virtual u8 di_caps() const { return 0x0; }
+    virtual u8 di_caps() const override { return 0x0; }
 
     void raise_irq(u8 port) { m_irq_raised_for_device |= (1 << port); m_current_irq = 0x0; }
 
 protected:
-    virtual u16* reg(u8 id);
-    virtual u16 do_cmd(u8 cmd, const std::vector<u16>& args);
-    virtual u8 get_argc(u8 cmd) const;
+    virtual u16* reg(u8 id) override;
+    virtual u16 do_cmd(u8 cmd, const std::vector<u16>& args) override;
+    virtual u8 get_argc(u8 cmd) const override;
 
 private:
     void eoi();

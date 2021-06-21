@@ -13,13 +13,6 @@ class FastIOBus : public Cx16Bus { public: virtual std::string name() const { re
 
 int main()
 {
-    std::ofstream err("err.log", std::ios::app);
-    if(!err.good())
-    {
-        error("main") << "Failed to open error log!";
-    }
-    std::cerr.rdbuf(err.rdbuf());
-
     std::cerr << std::endl << "\e[38;5;68;1mPumpkinCellOS cx16 Emulator v1.0\e[0m" << std::endl << std::endl;
 
     display::init(128, 64);
@@ -31,9 +24,16 @@ int main()
     // Create CPU and memory
     auto memory = std::make_shared<Memory>(8192);
 
-    auto cpu = std::make_shared<CPU>(rom_image);
+    rom_image.seekg(0, std::ios::end);
+    size_t rom_image_size = rom_image.tellg();
+    rom_image.seekg(0, std::ios::beg);
+    if(rom_image_size > 384)
+    {
+        error("main") << "ROM image is too big (" << rom_image_size << " > 384)";
+    }
+    auto cpu = std::make_shared<CPU>(rom_image, rom_image_size);
 
-    if(!rom_image.good())
+    if(rom_image.fail())
     {
         error("main") << "Failed to load ROM image. Try adding rom.img file in current directory.";
         return 1;
@@ -126,8 +126,7 @@ int main()
 
     info("main") << "Initialization done.";
 
-    // Reboot test.
-    while(true) { sleep(10); }
+    display::main_loop();
 
     return 0;
 }

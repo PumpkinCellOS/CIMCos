@@ -27,8 +27,10 @@ Device::Device()
 
 Device::~Device()
 {
+    info(name()) << "Device::~Device()";
     m_device_destroyed.store(true);
-    m_worker.join();
+    if(m_worker.joinable())
+        m_worker.join();
 }
 
 void Device::power_on()

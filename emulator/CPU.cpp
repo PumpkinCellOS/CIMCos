@@ -14,7 +14,8 @@ void CPU::boot()
     // to wait for devices!
     sleep(1);
 
-    while(!running())
+    info("CPU") << "CPU #0 entering execution mode.";
+    while(running())
     {
         // TODO: Work on reboot...
         // Probably we should use multiprocess architecture, with new
@@ -31,6 +32,7 @@ void CPU::boot()
             m_control_unit.dump_registers();
         }
     }
+    info("CPU") << "CPU #0 exiting execution mode.";
 }
 
 void CPU::pmi_boot()
