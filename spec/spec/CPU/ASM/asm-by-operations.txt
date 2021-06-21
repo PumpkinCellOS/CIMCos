@@ -1,0 +1,276 @@
+Byte order: big endian.
+
+# {00} -> I/O Operations
+# {OPCODE}{I|O}{Bt}{Port}
+# I|O - (Output, Input)
+# Bt - Size (16-bit, 8-bit)
+{00}{0}{0}{xxxx}  0x  OUT16  x, ax
+{00}{0}{1}{xxxx}  1x  OUT8   x, al  none
+{00}{1}{0}{xxxx}  2x  IN16   x, ax
+{00}{1}{1}{xxxx}  3x  IN8    x, al
+
+# {010} -> I/O Output (Immediate)
+# {OPCODE}{Bt}{Port}
+# Bt - Size (16-bit, 8-bit)
+{010}{0}{xxxx}  4x  OUT16  x, val  2(b)
+{010}{1}{xxxx}  5x  OUT8   x, val  1(b)
+
+# {0110} -> Store
+# {OPCODE}{Dst}{Src}
+# Dst - Destination (ax,bx,cd,dx)
+# Src - Source (ax,bx,cd,dx; if Dst==Src, then Src=val)
+{0110}{00==00}  60  MOV ax, val  2(a)
+{0110}{00}{01}  61  MOV ax, bx   none
+{0110}{00}{10}  62  MOV ax, cx   none
+{0110}{00}{11}  63  MOV ax, dx   none
+{0110}{01}{00}  64  MOV bx, ax   none
+{0110}{01==01}  65  MOV bx, val  2(a)
+{0110}{01}{10}  66  MOV bx, cx   none
+{0110}{01}{11}  67  MOV bx, dx   none
+{0110}{10}{00}  68  MOV cx, ax   none
+{0110}{10}{01}  69  MOV cx, bx   none
+{0110}{10==10}  6a  MOV cx, val  2(a)
+{0110}{10}{11}  6b  MOV cx, dx   none
+{0110}{11}{00}  6c  MOV dx, ax   none
+{0110}{11}{01}  6d  MOV dx, bx   none
+{0110}{11}{10}  6e  MOV dx, cx   none
+{0110}{11==11}  6f  MOV dx, val  2(a)
+
+# {01110} -> Jump
+# {OPCODE}{Type}
+{01110}{000}    70  JMP ax    none  Unconditional Far Jump to Pointer
+{01110}{001}    71  JMP ia    2(a)  Unconditional Far Jump to Fixed Address
+{01110}{010}    72  JZ  ia    1(a)  If ZF is set (JE) - Conditional Near Jump (Offset)
+{01110}{011}    73  JG  ia    1(a)  If GF is set - Conditional Near Jump (Offset)
+{01110}{100}    74  JL  ia    1(a)  If OF is set - Conditional Near Jump (Offset)
+{01110}{101}    75  JNE ia    1(a)  If ZF is not set - Conditional Near Jump (Offset)
+{01110}{110}    76  JGE ia    1(a)  If ZF or GF is set - Conditional Near Jump (Offset)
+{01110}{111}    77  JLE ia    1(a)  If ZF or OF is set - Conditional Near Jump (Offset)
+
+# {01111} -> Compare
+# {OPCODE}{Op1}{Op2}
+# Op1 - Operand1 (ax,bx,cd,dx; if Op1==dx & Op2==dx, then Reserved/Redundant)
+# Op2 - Operand2 (dx, val)
+{01111}{00}{0}  78  CMP ax, dx
+{01111}{00}{1}  79  CMP ax, val  2(b)
+{01111}{01}{0}  7a  CMP bx, dx
+{01111}{01}{1}  7b  CMP bx, val  2(b)
+{01111}{10}{0}  7c  CMP cx, dx
+{01111}{10}{1}  7d  CMP cx, val  2(b)
+{01111}{11}{0}  7e  II1          Invalid Instruction 1. It's guaranteed to be invalid.
+{01111}{11}{1}  7f  CMP dx, val  2(b)
+
+# {10000} -> Stack Push
+# {OPCODE}{Bt}{Reg}
+# Bt - Size (16-bit, 8-bit)
+# Reg - Operand (ax, val, bp offset, sp offset)
+{10000}{0}{00}  80  PUSH16  ax
+{10000}{0}{01}  81  PUSH16  val8   2(a)  2 bytes
+{10000}{0}{10}  82  PUSH16  [bp+a] 1(a)
+{10000}{0}{11}  83  PUSH16  [sp+a] 1(a)
+{10000}{1}{00}  84  PUSH8   al
+{10000}{1}{01}  85  PUSH8   val8   1(a)  1 byte
+{10000}{1}{10}  86  PUSH8   [bp+a] 1(a)
+{10000}{1}{11}  87  PUSH8   [sp+a] 1(a)
+
+# {10001} -> Stack Special
+# {OPCODE}{Pop|All}{SpOp}{R}
+# Pop|All - (Pop, All Regs)
+# SpOp - for Pop: Size (16-bit, 8-bit), for All Regs: (Push, Pop)
+# R - if 1 && Pop && !SpOp, then Remove Stack Frame
+{10001}{0}{0}{0}  88  POP16  ax    2 bytes
+{10001}{0}{0}{1}  89  _RMSTFR      Remove Stack Frame
+{10001}{0}{1}{0}  8a  POP8   al    1 bytes
+..............    8b  .. Reserved ..
+{10001}{1}{0}{0}  8c  PUSHA        All registries (ax,bx,cx,dx,sp,flags)
+..............    8d  .. Reserved ..
+{10001}{1}{1}{0}  8e  POPA         All registries (ax,bx,cx,dx,sp,flags)
+..............    8f  .. Reserved ..
+
+# {10010} -> Add
+# {OPCODE}{Dst:As|Cb}{SrcOp}
+# Dst - Destination ((ax, cx); if 1 and SrcOp==11, then (bx))
+# SrcOp - Source (for SrcOp==0: val,bx,cx,dx, for SrcOp==1: val,bx,dx,dx)
+{10010}{0}{00}  90  ADD ax, val  2(b)
+{10010}{0}{01}  91  ADD ax, bx
+{10010}{0}{10}  92  ADD ax, cx
+{10010}{0}{11}  93  ADD ax, dx
+{10010}{1}{00}  94  ADD dx, val  2(b)
+{10010}{1}{01}  95  ADD dx, bx
+{10010}{1}{10}  96  ADD dx, cx
+{10010}{1}{11}  97  ADD bx, dx
+
+# {10011} -> Subtract
+# {OPCODE}{Dst:As|Cb}{SrcOp}
+# Dst - Destination ((ax, cx); if SrcOp==11, then (bx, bp))
+# SrcOp - Source (for SrcOp==0: val,bx,cx,val, for SrcOp==1: val,bx,dx,dx)
+{10011}{0}{00}  98  SUB ax, val  2(b)
+{10011}{0}{01}  99  SUB ax, bx
+{10011}{0}{10}  9a  SUB ax, dx
+{10011}{0}{11}  9b  SUB sp, val  2(b)  _CPOP val; _CPUSH -val;
+{10011}{1}{00}  9c  SUB dx, val  2(b)
+{10011}{1}{01}  9d  SUB dx, bx
+{10011}{1}{10}  9e  SUB dx, cx
+{10010}{1}{11}  9f  SUB bx, dx
+
+# {101000} -> Multiply/Divide
+# {OPCODE}{M|D}{U|I}
+# M|D - (Multiply, Divide)
+# U|I - (Unsigned, Signed)
+# :: NOTE: dx stores MSW for multiply and remainder for divide.
+{101000}{0}{0}  a0  MUL ax, bx, dx
+{101000}{0}{1}  a1  IMUL ax, bx, dx
+{101000}{1}{0}  a2  DIV ax, bx, dx
+{101000}{1}{1}  a3  IDIV ax, bx, dx
+
+# {101001} -> And
+# {OPCODE}{Dst}{Src}
+# Dst - Destination (ax, flags)
+# Src - Source (val, bx; if Dst==flags && Src==bx, then Reserved)
+{101001}{0}{0}  a4  AND ax, val     2(b)
+{101001}{0}{1}  a5  AND ax, bx
+{101001}{1}{0}  a6  AND flags, val  2(b)   _FDSBL (~(<<val))
+..............  a7  .. Reserved ..
+
+# {101010} -> Or
+# {OPCODE}{Dst}{Src}
+# Dst - Destination (ax, flags)
+# Src - Source (val, bx; if Dst==flags && Src==bx, then Reserved)
+{101010}{0}{0}  a8  OR  ax, val     2(b)
+{101010}{0}{1}  a9  OR  ax, bx
+{101010}{1}{0}  aa  OR  flags, val  2(b)   _FENBL (<<val)
+..............  ab  .. Reserved ..
+
+# {101011} -> Other Byte/Logic Operation
+# {OPCODE}{N|S}{Type}
+# N|S - (Negate, Shift)
+# Type - for Negate: (Byte, Logic), for Shift: (Left, Right)
+{101011}{0}{0}  ac  NEG ax    Byte Negate
+{101011}{0}{1}  ad  NOT ax    Logic Negate
+{101011}{1}{0}  ae  SHL ax, bx
+{101011}{1}{1}  af  SHR ax, bx
+
+# {101100} -> Call
+# {OPCODE}{SF}{Op}
+# SF - Create Stack Frame
+# Op - Operand (Static[val16], Dynamic[ax])
+{101100}{0}{0}  b0  CALL  ia   2(ia)
+{101100}{0}{1}  b1  CALL  ax   none
+{101100}{1}{0}  b2  CALLA ia   2(ia)
+{101100}{1}{1}  b3  CALLA ax   none
+
+# {101101} -> Interrupt-Related
+# {OPCODE}{L|I}{Op}
+# L|I - (Load, Raise)
+# Op - Operand (for Load: (Dynamic, Static), for Raise: #U1, U2)
+{101101}{0}{0}  b4  LIVT ax    none
+{101101}{0}{1}  b5  LIVT ia    2(a)
+{101101}{1}{0}  b6  INT #U1
+{101101}{1}{1}  b7  INT #U2
+
+# {101110} -> Random Block 1
+# {OPCODE}{I|R}{Op}
+# I|R - (CounterOps, Return)
+# Op - for CounterOps: (Increment, Decrement), for Return: Is IRET
+{101110}{0}{0}  b8  INC cx
+{101110}{0}{1}  b9  DEC cx
+{101110}{1}{0}  ba  RET
+{101110}{1}{1}  bb  IRET
+
+# {101111} -> Random Block 2
+# {OPCODE}{Op}
+# Op - (Halt, Make Stack Frame, CPU Identification, Paging Setup)
+{101111}{00}  bc  HLT
+{101111}{01}  bd  _MKSTFR - Make Stack Frame (PUSH bp, MOV sp, bp)
+{101111}{10}  be  CPUID
+{101111}{11}  bf  PGE ax
+
+# {11000} -> Exclusive OR
+# {OPCODE}{Cl}{Op}
+# Cl - Is Clear
+# Op - Operand (ax,bx,cx,dx; if Cl==Op, then Op=val16)
+{11000}{0==00}  c0  XOR  ax, val16 2(b)
+{11000}{0}{01}  c1  XOR  ax, bx    none
+..............  c2  .. Reserved ..
+..............  c3  .. Reserved ..
+{11000}{1}{00}  c4  XOR  ax, ax    none     _CLR ax - Clear ax
+{11000}{1}{01}  c5  XOR  bx, bx    none     _CLR bx - Clear bx
+{11000}{1}{10}  c6  XOR  cx, cx    none     _CLR cx - Clear cx
+{11000}{1}{11}  c7  XOR  dx, dx    none     _CLR dx - Clear dx
+
+# {110010} -> Memory and Stack Store
+# {OPCODE}{Dst}
+# Dst - Destination (bx, val, bp offset, sp offset)
+{110010}{00}  c8  MOV [bx], dx    none  Write RAM at bx   _STORE bx
+{110010}{01}  c9  MOV [val16], dx 2(a)  Write RAM at mem  _STORE val
+{110010}{10}  ca  MOV [bp+x], dx  1(x)                    _STORE bp+x
+{110010}{11}  ca  MOV [sp+x], dx  1(x)                    _STORE sp+x
+
+# {110011} -> dx Store Special
+# {OPCODE}{Src}
+# Src - Source (bx, val, bp offset, sp offset)
+{110011}{00}  cc  MOV dx, [bx]    none  Read RAM at bx   _LOAD bx
+{110011}{01}  cd  MOV dx, [val16] 2(b)  Read RAM at mem  _LOAD val
+{110011}{10}  ce  MOV dx, [bp+x]  1(x)                   _LOAD bp+x
+{110011}{11}  cf  MOV dx, [sp+x]  1(x)                   _LOAD sp+x
+
+# {1101} -> Exchange
+# {OPCODE}{op1}{op2}
+# op1 - Operand 1 (ax,bx,cx,dx)
+# op2 - Operand 2 (ax,bx,cx,dx)
+# Reserved/Redundant: d4,d8,d9,dc,dd,de
+{1101}{00==00}  d0  XCHG ax, ax   N     Debug
+{1101}{00}{01}  d1  XCHG ax, bx   N
+{1101}{00}{10}  d2  XCHG ax, cx   N
+{1101}{00}{11}  d3  XCHG ax, dx   N
+{1101}{01}{00}  d4  Placeholder (guaranteed to be unused)
+{1101}{01==01}  d5  XCHG bx, bx   N     Debug
+{1101}{01}{10}  d6  XCHG bx, cx   N
+{1101}{01}{11}  d7  XCHG bx, dx   N
+..............  d8  .. Reserved ..
+..............  d9  .. Reserved ..
+{1101}{10==10}  da  XCHG cx, cx   N     Debug
+{1101}{10}{11}  db  XCHG cx, dx   N
+..............  dc  .. Reserved ..
+..............  dd  .. Reserved ..
+..............  de  .. Reserved ..
+{1101}{11==11}  df  XCHG dx, dx   N     Debug
+
+# {1110} -> Extended Operations
+# {OPCODE}{x}
+# x - Extended Opcode
+# :: NOTE: These instructions resets addb registry.
+{1110}xxxx      ex  .. Extended Operations ..
+
+# {111100} -> Store Stack
+# {OPCODE}{S|B}{A|V}
+# S|B - (sp, bp)
+# A|V - (ax, val16)
+{111100}{0}{0}  f0  MOV sp, ax     none
+{111100}{0}{1}  f1  MOV sp, val16  2(a)
+{111100}{1}{0}  f2  MOV bp, ax     none
+{111100}{1}{1}  f3  MOV bp, val16  2(a)
+
+# {111101} -> Memory and Stack Store, 8-bit
+# {OPCODE}{Dst}
+# Dst - Destination (bx, val, bp offset, sp offset)
+{111101}{00}  f4  MOV [bx], dl    none  Write RAM at bx   _STORE bx
+{111101}{01}  f5  MOV [val8], dl  1(a)  Write RAM at mem  _STORE val
+{111101}{10}  f6  MOV [bp+x], dl  1(x)                    _STORE bp+x
+{111101}{11}  f7  MOV [sp+x], dl  1(x)                    _STORE sp+x
+
+# {111110} -> dx Store Special, 8-bit
+# {OPCODE}{Src}
+# Src - Source (bx, val, bp offset, sp offset)
+{111110}{00}  f8  MOV dl, [bx]    none  Read RAM at bx   _LOAD bx
+{111110}{01}  f9  MOV dl, [val8] 1(b)  Read RAM at mem   _LOAD val
+{111110}{10}  fa  MOV dl, [bp+x]  1(x)                   _LOAD bp+x
+{111110}{11}  fb  MOV dl, [sp+x]  1(x)                   _LOAD sp+x
+
+# {111111} -> Truncate
+# {OPCODE}{Op}
+# Op - (ax, bx, cx, dx)
+{111111}{0}{0}  fc  TRC ax  none
+{111111}{0}{1}  fd  TRC bx  2(a)
+{111111}{1}{0}  fe  TRC cx  none
+{111111}{1}{1}  ff  TRC dx  2(a)

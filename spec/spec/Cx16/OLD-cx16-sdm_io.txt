@@ -1,0 +1,679 @@
+
+
+             &&
+     ,_____&&&_____,
+    //             \\
+   //               \\
+   |  P u m p k i n  | 
+   |                 | 
+   \\    C e l l    //
+    \\             //
+     '\___________/'
+
+   
+     
+====================================
+-=-=-                          -=-=-
+-=-=-=-  Cx16 I/O (16-bit)   -=-=-=-
+-=-=-                          -=-=-
+====================================
+
+
+
+   Software Developer's Manual
+   
+           Version 1.0
+   
+   
+   Copyright (c) SyberMCd 2021
+   Copyright (c) Adam2004yt 2021
+   
+   
+   Prototype built by:
+    Adam2004yt
+    PumpkinCell
+    SyberMCd
+
+
+
+==================================
+
+
+
+   ===== DEFINITIONS =====
+
+   
+
+I/O - Input/Output
+IRQ - Interrupt Request
+ISR - Interrupt Service Routine
+Res - Result
+rt - repeater ticks (1 rt = 2 MC ticks = 1/10 sec)
+
+
+
+   ===== OVERVIEW =====
+
+
+
+There are 255 I/O half-duplex port addresses. 16 are connected 
+to real CPU ports due to it's limitations. Each port is assigned
+to specific device.
+
+Every device that needs IRQ has it assigned. There can be up
+to 256 IRQ lines, 8 are connected to CPU due to it's limitations.
+
+All I/O related stuff is handled in southbridge, except Fast I/O
+which is handled in northbridge.
+
+
+
+   ===== I/O PROTOCOL =====
+
+
+
+The I/O protocol is a half-duplex, parallel interface for 
+doing I/O operations. There are 2 types of I/O users:
+- Master - controls I/O operations; typically CPU
+- Slave - responds to master's signals; typically devices.
+
+
+-- Physical overview --
+
+ Master                   Slave
+ ,---,                    ,---,
+ |   |=<=== DAT0 IN ====<=|   |
+ |   |=>=== DAT0 OUT ===>=|   |
+ |   |=<=== DAT1 IN ====<=|   |
+ |   |=>=== DAT1 OUT ===>=|   |
+ |   |-<--- IN FIN -----<-|   |
+ |   |->--- OUT FIN ---->-|   |
+ |   |->--- IN REQ ----->-|   |
+ |   |->---- MODE ------>-|   |
+ '---'                    '---'
+
+DAT0 IN - 8-bit Input data (LSB)
+DAT0 OUT - 8-bit Output data (LSB)
+DAT1 IN - 8-bit Input data (MSB)
+DAT1 OUT - 8-bit Output data (MSB)
+IN FIN - Whether the slave has finished transmitting or receiving data.
+OUT FIN - Whether the master has finished transmitting or receiving data.
+IN RQ - Master's request for input
+MODE - If 0, slave will send data only through DAT0 line. (for 8-bit I/O)
+ 
+The entire bus created by the lines above is named
+'data bus' (DATA). It is simply drawn as below:
+
+ Master                Slave
+ ,---,                ,---,
+ |   |=<>== DATA ==<>=|   |
+ '---'                '---'
+
+ 
+-- OUT procedure --
+
+1. If 16-bit OUT, Master sets MODE bit.
+2. Master sets DAT0 OUT lines to transmitted value's LSB.
+3. If 16-bit OUT, Master sets DAT1 OUT to transmitted value's MSB.
+4. Master sets OUT FIN line to indicate that transmision has finished.
+5. Slave sets IN FIN line to inform Master that they successfully received the data.
+6. Master clears OUT FIN and MODE line. Slave clears IN FIN line.
+
+
+-- IN procedure --
+
+1. If 16-bit IN, Master sets MODE bit.
+2. Master sets IN REQ line to request input from Slave.
+3. Slave sets DAT0 OUT lines to transmitted value's LSB.
+4. If MODE is set, Slave sets DAT1 OUT to transmitted value's MSB.
+5. Slave sets IN FIN line to indicate that transmision has finished.
+6. Master sets OUT FIN line to inform Slave that they successfully received the data.
+7. Slave clears IN FIN line. Master clears OUT FIN, MODE and IN REQ line.
+
+
+-- I/O switch --
+
+An I/O switch expands 1 master line to several slave's lines.
+It needs an additional 8-bit PORT line for select destination 
+slave:
+                 
+                       Switch
+ Master                ,---,    ,-,
+ ,---,                 |   |=<>=|0|
+ |   |=<>== DATA ===<>=|   |    '-'
+ |   |=>=== PORT ====>=|   |    ,-,
+ '---'                 |   |=<>=|1|
+                       '---'    '-'
+ 
+The switches can be connected cascadically. The port line must
+be wider:
+                 
+                      Sw. layer1          Sw. layer2         Slaves
+ Master                 ,---,               ,--,
+                        |   |=<>= DATA ==<>=|0 |=<>= DATA =<>=[00]
+ ,---,                  | ,-|=>== PORT1 ==>=|  |=<>= DATA =<>=[01]
+ |   |=<>== DATA ====<>=| | |               '--'
+ |   |=>=== PORT01 ===>=|-| |               ,--,
+ '---'                  | | |=<>= DATA ==<>=|1 |=<>= DATA =<>=[10]
+                        | '-|=>== PORT1 ==>=|  |=<>= DATA =<>=[11]
+                        '---'               '--'
+
+In the above example, the PORT0 line is used to address 2 layer2
+switches and PORT1 to 2 slaves for each layer2 switch. The resulting
+PORT01 line is 16-bit wide.
+
+
+
+   ===== INTERRUPT REQUESTS =====
+   
+   
+   
+[TODO]
+There are maximum of 256 interrupts supported by ...
+Master PIC, Slave PIC, ....
+
+
+
+   ===== I/O PORT ASSIGNMENT IN PROTOTYPE =====
+
+
+   
+// TODO: Document DMA channels!
+
+-- Ports --
+
+PORT  Res+Purpose
+----------------------------------------------
+0x00  V  Legacy I/O [Programmable Interval Timer]
+0x01  V  Legacy I/O [Keyboard]
+0x02  V  Legacy I/O [Mass storage]
+0x03  V  Legacy I/O [Soundcard]
+0x04  V  Legacy I/O [Programmable Interrupt Controller]
+0x05  V  Legacy I/O [Power Management Interface]
+0x06  V  Legacy I/O [Randomizer (Generic Character Device)]
+0x07  V  Legacy I/O [Real Time Clock]
+----------------------------------------------
+0x08  R  <Reserved>
+0x09  R  Device Info
+----------------------------------------------
+0x0a  -  <Unused>
+0x0b  -  <Unused>
+----------------------------------------------
+0x0c  V  Fast I/O (PIC)
+0x0d  R  Fast I/O (Port 2)
+0x0e  V  Fast I/O (Port 1) [Printer]
+0x0f  V  Fast I/O (Port 0) [GFX]
+----------------------------------------------
+0x10 - 0xff are all unsupported by CPU
+            but supported by DI.
+----------------------------------------------
+
+For Graphics Card (which is connected to northbridge), 
+there is 1 port (PORT15) and 1 IRQ (IRQ6) reserved. 
+
+
+-- IRQs --
+
+IRQ  INT  Res+Purpose
+----------------------------------------------
+0    8    V  Legacy I/O [Programmable Interval Timer]
+1    9    V  Legacy I/O [Keyboard]
+2    10   V  Legacy I/O [Power Management Interface]
+3    11   V  Legacy I/O [Mass storage]
+4    12   V  Legacy I/O [Soundcard]
+5    13   R  Cascading IRQ from Slave (Legacy) PIC
+6    14   R  Reserved.
+7    15   V  Spurious IRQ
+8    16   R  Fast I/O (Port 2)
+9    17   V  Fast I/O (Port 1) [Printer]
+10   18   V  Fast I/O (Port 0) [GFX]
+----------------------------------------------
+11 - 255 <Unused>
+----------------------------------------------
+
+
+-- DI Numbers --
+
+PORT  Res+Purpose
+----------------------------------------------
+0x00  V  Legacy I/O [Programmable Interval Timer]
+0x01  V  Legacy I/O [Keyboard]
+0x02  V  Legacy I/O [Mass storage]
+0x03  V  Legacy I/O [Soundcard]
+0x04  V  Legacy I/O [Programmable Interrupt Controller]
+0x05  V  Legacy I/O [Power Management Interface]
+0x06  V  Legacy I/O [Randomizer (Generic Character Device)]
+0x07  V  Legacy I/O [Real Time Clock]
+----------------------------------------------
+0x08  R  <Reserved>
+0x09  R  Device Info
+0x0a  -  <Unused>
+0x0b  -  <Unused>
+----------------------------------------------
+0x0c  V  Fast I/O (PIC)
+0x0d  R  Fast I/O (Port 2) [Reserved]
+0x0e  V  Fast I/O (Port 1) [Printer]
+0x0f  V  Fast I/O (Port 0) [GFX]
+----------------------------------------------
+0x10 - 0xfa are all <Unused>
+----------------------------------------------
+0xfb  R  I/O [Legacy]
+0xfc  R  DMA Controller [Slow & Legacy I/O]
+0xfd  R  DMA Switch & Fast I/O Controller
+0xfe  V  RAM0 [RAM]
+0xff  V  Cx16 CPU [CPU]
+----------------------------------------------
+
+
+
+   ===== I/O CONVENTION FOR DEVICES =====
+
+
+
+-- Any I/O --
+
+Synchronous command
+-out8 port, cmd
+[-out16 port, args...]
+[-in16 port, results]
+
+Asynchronous command
+-out8 port, cmd
+[-out16 port, args...]
+ <in irq>
+-in8 port, cmd
+[-in16 port, results]
+
+Register read
+-out16 port, 0x00:register
+-in16 port, value
+
+Register write
+-out16 port, 0x01:register
+-out16 port, value
+[-in8 port, status (0 - Success, 1 - Invalid Operation, ...)]
+
+
+-- Legacy I/O --
+
+Legacy I/O plain interrupt
+- device-specific
+
+Legacy I/O interrupt with command
+-in8 port, cmd
+[-in16 port, result]
+
+
+-- Fast I/O --
+
+Fast I/O interrupt with command:
+-in16 port, dev:cmd
+[-in16 port, result]
+
+
+
+   =====  DEVICE INFO (DI)  =====
+
+   
+   
+The Device Info (DI) interface is used to query
+device-specific static information. It can be used
+to detect devices and it's capabilities along with
+device-specific registers. DI can be thought as
+Plug & Play implementation.
+
+The current version of DI is 1.0.
+
+
+-- Protocol --
+
+Get DI by Device Port:
+-out8 0x9, port
+-in8 0x9, status                     // AXCPDDDD / Assigned-eXtendedCaps-knownCaps-Present-DeviceType
+ <break here if not Present>
+[-in8 0x9, caps] if knownCaps        // xxxxVVVV / (x:device specific)-DeviceVersion[0x0 default]
+[-in16 0x9, excaps] if eXtendedCaps  // Mxxxxxxxdddddddd / MoreCaps-(x:device specific)-DeviceExType[if DeviceType=0xe]
+ <1:>
+[-in16 0x9, excaps] if MoreCaps      // Mxxxxxxxxxxxxxxx / MoreCaps-(x:device specific)
+ <jump to 1 if MoreCaps>
+ 
+Enumerate Devices [TODO]
+
+
+-- Default Device Types (DDTs) --
+
+The Default Device Type is used to determine interface 
+that will be used to communicate with this device.
+
+It can be *extended* using DeviceVersion.
+
+If DeviceType = 0xe, the real device type is set, 
+if eXtendedCaps, in DeviceExType. Otherwise, it is 
+assumed an Invalid Device.
+
+Default device types:
+
+No   Type
+0x0  System timer
+0x1  Key input device
+0x2  Mass storage with FS acceleration
+0x3  Sound adapter
+0x4  Interrupt controller
+0x5  PMI controller
+0x6  Generic stream (non-seekable storage)
+0x7  Real time clock
+0x8  Invalid device
+0x9  <Reserved> for Generic block device (seekable storage)
+0xa  Printer
+0xb  DI controller (Self-DI)
+0xc  Not cx16/DI compliant device
+0xd  Graphics adapter
+0xe  Custom device (see eXtendedCaps)
+0xf  Not connected
+
+ 
+-- Self-DI --
+
+Self-DI is used to query info about DI controller itself.
+
+Version -> MajorVersion
+
+Self-DI knownCaps:
+- 1  #AE  Allow Enumerate
+- 0
+- 0
+- 0  #RV  Support for DI2
+
+Self-DI eXtendedCaps:
+- 0
+- 0
+- 0
+- 0
+- 0  #MV  MinorVersion
+- 0  =
+- 0  =
+- 0  =
+
+Prototype DI: eXtendedCaps=0, knownCaps=1, Present=1, MajorVersion=0x1, MinorVersion=0x0 (1.0).
+NOTE:
+    * If knownCaps = 0, all flags are assumed false.
+    * If eXtendedCaps = 0, the minor version is assumed 0x0.
+   
+
+
+   ===== DEFAULT DEVICE TYPES (DDT) SPECIFICATION =====
+
+   
+   
+There are basic specification of all of the DDTs below.
+
+
+-- System timer (0x0) --
+
+- Registers
+    RID   Size Acc  Purpose
+    0x00  8    RW   Interval in rt
+    0x01  16   R    Ticks since boot
+- IRQs
+    IRQN  Purpose
+    0x00  Timer Tick
+
+
+-- Key input device (0x1) --
+
+- Registers
+    RID   Acc Size  Mm        Purpose
+    0x00  RW  8(3)  KBD_LOCK  Lock Key State (000000Cr / CapsLock-Reserved)
+    0x01  R   8(3)  KBD_CTRL  Control Key State (00000ACS / Alt-Control-Shift)
+- IRQ Commands
+    ICID  Res             Purpose
+    0x00  [scancode(16)]  Key Press
+
+
+-- Mass storage with FS acceleration (0x2) --
+
+See Devices/mass-storage.txt and OS/os-extensions.txt for more information.
+
+- DI Capabilities
+    - 0
+    - 0  #AC  Access Control
+    - 0  #IR  ID Recycling
+    - 1  #DN  Directory-unique Names
+- Registers
+    RID   Acc Size  Mm      Purpose
+    0x00  R   16    HDD_FS  Filled storage (in B)
+    0x01  R   16    HDD_IC  ID counter (binary int)
+    0x02  RW  16    HDD_UA  User address (address of current user's location)
+
+- Description
+    All operations returns 0 if error or file ID (non-zero) if success.
+    
+    File ID 0 is reserved as invalid ID. Listing ID 0 returns partition
+    data.
+    
+    Note for file names:
+    File name length is 12B.
+    
+    All file names are HDD_UA relative. If HDD_UA == 0, the name is
+    used as partition name.
+
+    The last byte of name determines an extension. The notation '(<=6*16)'
+    indicates that the read stops when data MSB == 0x00, or if 6 words
+    are already loaded. The LSB is then an extension of the file.
+    
+    Access -> sector write/read/write/delete/create
+    
+    Available partition names:
+
+  | Name |  ID  |    Hex Name    | Access | Purpose/optimization
+  +------+------+----------------+--------+------------------------------
+  | /sys | 0001 | 2f73 7973 0000 |  r---  | System binaries
+  | /snd | 0002 | 2f73 6e64 0000 |  r--c  | Sounds
+  | /app | 0003 | 2f61 7070 0000 |  r---  | User applications
+  | /dt0 | 0004 | 2f64 7430 0000 |  rwdc  | Data
+  | /dt1 | 0005 | 2f64 7431 0000 |  rwdc  | Data
+  | /dt2 | 0006 | 2f64 7432 0000 |  rwdc  | Data
+  | /dt3 | 0007 | 2f64 7433 0000 |  rwdc  | Data
+  +------+------+----------------+--------+------------------------------
+   
+    The Access can be bypassed by special hardware switch. It is
+    not applied for devices without #AC DI capability.
+    
+    See Devices/mass-storage.txt for more details.
+    
+- Commands
+    CID   Args                            Res        Purpose
+    0x02  [id(16);addr(16)]               [id(16)]   list directory 'id' contents, save their IDs to RAM[addr:element count]
+        Error codes: NO_FILE if 'id' not found, NOT_DIR if 'id' is not a directory,
+        FAULT if failed to write data (e.g RAM out of range)
+        NOTE: The RAM space must be prepared by OS.
+        
+    0x03  [id(16)]                        [id(16)]   delete file 'id'
+        Error codes: NO_FILE if 'id' not found, NOT_EMPTY if 'id' is a non-empty directory.
+        
+    0x04  [id(16);addr(16);offset(16);size(16)]      [id(16)]   read 'size' bytes from file 'id' at 'offset' to RAM[addr:size]
+        Error codes: NO_FILE if 'id' not found, IS_DIR if 'id' is a directory,
+        OVERFLOW if offset+size exceeds file boundary, FAULT if failed to write data (e.g RAM out of range)
+        
+    0x05  [id(16);addr(16);offset(16);size(16)]      [id(16)]   write 'size' bytes to file 'id' at 'offset' from RAM[addr:size]
+        Error codes: NO_FILE if 'id' not found, IS_DIR if 'id' is a directory,
+        OVERFLOW if offset+size exceeds file boundary, FAULT if failed to write data (e.g RAM out of range)
+        
+    0x06  [fid(16);id(16)]                [id(16)]   move file 'id' to directory 'fid'
+        Error codes: NO_FILE if 'id' not found, NOT_DIR if 'fid' is not a directory.
+
+    
+    0x08  [name(<=6*16)]                    [id(16)]   get 'name' file's id
+        Error codes: NO_FILE if 'name' not found.
+        
+    0x09  [id(16)]                        [id(16);size(16);name(6*16)]   get 'id' file's info
+        Error codes: NO_FILE if 'id' not found.
+        Returns: size -> file size OR file count for folders. If id==0, DON't read further!
+        
+    0x0a  [name(<=6*16);fid(16)]     [id(16)]   create file with name 'name', in folder 'fid'
+        Error codes: NO_FILE if 'fid' not found, NOT_DIR if 'fid' is not a directory, 0 otherwise.
+
+    
+    0x12  [name(<=6*16);addr(16)]           [id(16)]   list directory 'name' contents, save their IDs to RAM[addr:element count]
+        Error codes: NO_FILE if 'name' not found, NOT_DIR if 'name' is not a directory.
+        The RAM space must be prepared by OS.
+        
+    0x13  [name(<=6*16)]                    [id(16)]   delete file 'name'
+        Error codes: NO_FILE if 'name' not found, NOT_EMPTY if 'name' is a non-empty directory.
+        
+    0x14  [name(<=6*16);addr(16);offset(16);size(16)]  [id(16)]   read 'size' bytes from file 'name' at 'offset' to RAM[addr:size]
+        Error codes: NO_FILE if 'name' not found, IS_DIR if 'name' is a directory.
+        
+    0x15  [name(<=6*16);addr(16);offset(16);size(16)]  [id(16)]   write 'size' bytes to file 'name' at 'offset' from RAM[addr:size]
+        Error codes: NO_FILE if 'name' not found, IS_DIR if 'name' is a directory.
+        
+    0x16  [fid(16);name(<=6*16)]            [id(16)]   move file 'name' to directory 'fid'
+        Error codes: NO_FILE if 'name' not found, NOT_DIR if 'fid' is not a directory.
+    
+    0x17  [id(16);newname(<=6*16)]          [id(16)]   rename file 'id' to 'newname'
+        Error codes: NO_FILE if 'id' not found.
+
+        
+    0x20  []                              [err(16)]  get last error code
+        Returns: error code of last operation.
+        
+    // TODO: FS management?
+        
+- IRQ Commands
+    ICID  Res       Purpose
+    0x00  [id(16)]  Read Finished
+    0x01  [id(16)]  Write Finished
+    
+- Error Codes
+    0x00  SUCCESS    Success (not an error)
+    0x01  NO_FILE    No such file or directory
+    0x02  IS_DIR     Is a directory
+    0x03  NOT_DIR    Not a directory
+    0x04  NOT_EMPTY  Directory not empty
+    0x05  OVERFLOW   File overflow (access out of range)
+    0x06  FAULT      Memory access fault (DMA fault)
+    0x07  INVALID    Invalid value
+    0x08  ACCESS     Access denied
+
+
+-- Sound adapter (0x3) --
+
+// TODO: Sound format!
+
+- DI Capabilities
+    - 0
+    - 0
+    - 0  
+    - 1  #MC  Multi-Channel
+- Registers
+    RID   Acc Size  Mm            Purpose
+    0x00  R   8     SND_MAXCH     Max Channel Count (if #MC, 1 otherwise)
+    0x01  RW  8     SND_CHMASK    Channel Mask (used to mute channels, if #MC, 0xFF otherwise)
+    0x02  RW  8     SND_PLAYMODE  Play Mode (0000000L / Loop)
+    0x03  R   16    SND_BUFSIZE   Buffer Size per Channel
+- Commands
+    CID   Args                            Res  Purpose
+    0x02  [addr(16);size(16);channel(8)]  []   Load Sound from RAM(addr:size) to BUF[channel].
+        If not #MC, do NOT give `channel`.
+
+    0x03  [chmask(8)]                     []   Start Playing
+        The sound is loaded from buffer and played from beginning.
+        If not #MC, do NOT give `chmask`.
+    
+    0x04  [chmask(8)]                     []   Stop Playing
+        The command clears the sound cache and stops playing.
+        If not #MC, do NOT give `chmask`.
+        // Is that command useful?
+    
+    0x05  [chmask(8)]                     []   Pause Playing
+        Toggles the pause state. If it is called when already paused, the sound is resumed.
+        If not #MC, do NOT give `chmask`.
+
+
+-- Interrupt Controller (0x4) --
+
+Each Interrupt Controller (PIC) has 16 device IRQ inputs.
+
+- Port 4
+- Registers
+    RID   Acc Size  Mm        Purpose
+    0x00  RW  16    PIC_MASK  IRQ mask
+- Commands
+    CID   Args         Res  Purpose
+    0x02  []           []   EOI - clears irq lines
+    0x03  [offset(8)]  []   Remap (Specify offset)
+
+
+-- PMI controller (0x5) --
+
+- DI Capabilities
+    - 0
+    - 0       Reserved (alternatively for PMI2)
+    - 0  #SL  Allow Sleep
+    - 1  #RB  Allow Reboot
+- Commands
+    CID   Args  Purpose
+    0x02  []    Shutdown
+    0x03  []    Reboot
+- IRQ Commands
+    ICID  Res  Purpose
+    0x00  no   Power-off Button
+    0x01  no   Reset Button
+
+
+-- Generic character device (0x6) --
+
+- Registers
+    RID   Acc Size  Mm           Purpose
+    0x00  R   4 (8) GCD_ALLOWED  Allowed operations (000DICRW / DMA-Init-Clear-Read-Write)
+- Commands
+    CID   Args        Res         Purpose
+    0x02  [addr(16)]  [size(16)]  Load to RAM
+    0x03  []          []          Init Buffer
+    0x04  []          []          Clear Buffer
+    0x05  []          [value(8)]  Read Byte
+    0x06  [value(8)]  []          Write Byte
+
+
+-- Real time clock (0x7) --
+
+- Registers
+    RID   Acc Size  Mm         Purpose
+    0x00  RW  16    RTC_DAYS   MC Days (1 MC day = 24000 MC ticks = 20 min)
+    0x01  RW  16    RTC_TICKS  MC Ticks (1 MC tick = 1/20 sec)
+
+
+-- Printer (0xa) --
+// TODO
+    
+-- Graphics adapter (0xd) --
+
+- DI Capabilities
+    - 0  #MF  Multi Font
+    - 0  #DB  Double Buffer
+    - 0  #FO  Fill Operations
+    - 0  #VM  Graphical Video Mode
+- Registers
+    RID   Acc Size  Mm            Purpose
+    0x00  RW  8(1)  GFX_VM        Video Mode (0000000T / TextMode). Default: 0x1 (T)
+    0x01  R   16    GFX_SCREENSZ  Graphical Mode Screen Size (xxxxxxxxyyyyyyyy - prototype: 128x64)
+    0x01  R   16    GFX_SCREENSZ  Text Mode Screen Size (xxxxxxxxyyyyyyyy - prototype: 25x10, padding: 2px left, 1px right, 2px top, 2px bottom)
+    0x02  RW  16    GFX_FBADDR    Framebuffer Address
+    0x03  R   8     GFX_MAXFONTS  Maximum Fonts (If not #MF, it's set to 1)
+- Commands
+    CID   Args                                Res  Purpose
+    0x02  [color(8)]                          []   Clear Framebuffer with 'color'. 'color' only applicable in graphical mode. In text mode, always clears with empty (0x00) character.
+    
+    0x03  [x,y(8+8);color(8)]                 []   Set Pixel 'x,y' to 'color'. Only applicable in graphical mode.
+    
+    0x04  [x,y(8+8);w,h(8+8);color(8)]        []   Fill Rect 'x,y:w,h' with 'color' Only applicable in graphical mode.
+    
+    0x05  [x,y(8+8);w,h(8+8)]                 []   Flush Rect. Supported only if #DB.
+
+    0x06  [x,y(8+8);w,h(8+8);size(16);op(8)]  []   Fill Framebuffer Region at 'x,y' size 'w,h' from RAM[fbaddr:size] using 'op'
+        Operations: 0(=) 1(&) 2(|) 3(^) 4(!^) if #FO, (=) is used by default if operations are not supported
+        
+    0x07  [x,y(8+8);font,code(8+8)]           []   Set Character 'code' at 'x,y' using 'font' if #MF.
+        Only applicable in text mode.
+        
+    0x08  [font,code(8+8);addr(16)]           []   Load Font Character from 'addr' to 'font'. // TODO: font character format...
