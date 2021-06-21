@@ -7,10 +7,40 @@ bool InstructionOperation::execute(RuntimeData& data) const
 {
     std::string mnemonic = m_instruction.mnemonic;
 
+    // Change mnemonic to uppercase
     std::transform(mnemonic.begin(), mnemonic.end(), mnemonic.begin(),
     [](char c){ return std::toupper(c); });
 
     std::shared_ptr<Opcode> opcode;
+
+    auto is_reserved_name = [&](std::string name) {
+        const char* reserved_names[] = {
+            "al", "bl", "cl", "dl", // 8-bit registers
+            "ax", "bx", "cx", "dx", // 16-bit registers
+            "IF", "GF", "OF", "ZF", "NF", "PF", "EF", // Flags
+        };
+
+        for(auto& reserved_name: reserved_names)
+        {
+            if(name == reserved_name)
+                return true;
+        }
+        return false;
+    };
+
+    auto resolve_operand = [&](std::shared_ptr<Operand> operand)->std::shared_ptr<Operand> {
+        if(operand->type == Operand::Type::Name && !is_reserved_name(operand->value))
+        {
+            auto resolved_operand = data.resolve_assignment(operand->value);
+            if(!resolved_operand)
+                BUILDER_ERROR(&m_instruction, "invalid name operand: " + operand->value);
+            return resolved_operand;
+        }
+        else
+        {
+            return operand;
+        }
+    };
 
     // 0 arguments
     if(m_instruction.members.size() == 0)
@@ -71,6 +101,7 @@ bool InstructionOperation::execute(RuntimeData& data) const
     if(!opcode)
     {
         opcode = std::make_shared<opcodes::Invalid>();
+        // TODO: Turn it into error when all opcodes are implemented
         BUILDER_WARNING(&m_instruction, "invalid opcode");
     }
 
