@@ -7,7 +7,7 @@ bool ignore_at_least_one_of_type(Lexer& lexer, Token::Type type)
 {
     const Token* token;
     size_t counter = 0;
-    do counter++; while(token = lexer.consume_token_of_type(type));
+    do counter++; while((token = lexer.consume_token_of_type(type)));
     if(counter == 0)
     {
         return false;
@@ -18,7 +18,7 @@ bool ignore_at_least_one_of_type(Lexer& lexer, Token::Type type)
 void ignore_all_of_type(Lexer& lexer, Token::Type type)
 {
     const Token* token;
-    while(token = lexer.consume_token_of_type(type));
+    while((token = lexer.consume_token_of_type(type)));
 }
 
 // operand ::= address-operand | section-operand | isr-operand | number | identifier
@@ -278,9 +278,13 @@ std::shared_ptr<Directive> parse_directive(Lexer& lexer)
 std::shared_ptr<Assignment> parse_assignment(Lexer& lexer)
 {
     std::shared_ptr<Assignment> assignment = std::make_shared<Assignment>();
-    assignment->identifier = parse_identifier(lexer);
-    if(!assignment->identifier)
+
+    auto name = lexer.consume_token_of_type(Token::Name);
+    if(!name)
         return nullptr;
+
+    assignment->identifier = std::make_shared<NameIdentifier>();
+    assignment->identifier->name = name->value;
 
     auto assignment_op = lexer.consume_token_of_type(Token::Assignment);
     if(!assignment_op)

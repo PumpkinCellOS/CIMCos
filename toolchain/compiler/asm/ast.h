@@ -181,7 +181,7 @@ public:
 class Assignment : public Operation
 {
 public:
-    std::shared_ptr<Identifier> identifier;
+    std::shared_ptr<NameIdentifier> identifier;
     std::shared_ptr<Operand> operand;
 
     virtual std::string display() const override
