@@ -10,8 +10,8 @@ int main(int argc, char* argv[])
 {
     std::map<std::string, util::ArgSpec> argspec = {
         // Generic
-        {"-help",    {true,  "Display help and quit"}},
-        {"-version", {true,  "Display version and quit"}},
+        {"-help",    {true, "Display help and quit"}},
+        {"-version", {true, "Display version and quit"}},
 
         // Input
         {"x",       {false, "Specify input language. Possible values are c,asm."}},
@@ -25,6 +25,7 @@ int main(int argc, char* argv[])
 
         // Dialect options
         {"ffreestanding", {true, "Do not link libc and crt0 (useful for OS kernels)"}},
+        {"fraw",          {true, "Generate raw code, without header (useful for bootloaders/firmware)"}},
 
         // Misc. options
         {"S",  {true, "Only compile, do not assemble. It's ignored if input language is 'asm'"}}
@@ -39,7 +40,6 @@ int main(int argc, char* argv[])
     {
         std::cout << std::endl;
         std::cout << argv[0] << " (SPP Compiler) " << SCC_VER << " for " << SCC_OS_NAME << " (" << SCC_OS_ARCH << ")" << std::endl;
-        std::cout << "Licensed under No license :)" << std::endl;
         return 0;
     }
     if(args.options.count("-help"))
@@ -98,6 +98,8 @@ int main(int argc, char* argv[])
     // Dialect options
     if(args.options.count("ffreestanding"))
         options.f_freestanding = true;
+    if(args.options.count("fraw"))
+        options.f_raw = true;
 
     // Input
     std::string language = args.options["x"];

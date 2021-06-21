@@ -25,11 +25,11 @@ bool assemble_to_obj(convert::InputFile& input, convert::OutputFile& output, con
 
     std::cout << "Semantic analysis!" << std::endl;
 
-    Builder builder(block);
+    Builder builder(block, options);
     bool success = builder.build();
     builder.display();
 
-    Generator generator(builder.runtime_data());
+    Generator generator(builder.runtime_data(), options);
     success &= generator.generate(output);
     return success;
 }

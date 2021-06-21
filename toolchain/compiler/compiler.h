@@ -14,6 +14,7 @@ struct Options
     
     // Dialect options
     bool f_freestanding = false;
+    bool f_raw = false;
 };
     
 }

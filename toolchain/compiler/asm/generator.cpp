@@ -74,7 +74,9 @@ bool Generator::generate(convert::OutputFile& output)
     // TODO: Write relocation entries and symbols
 
     // Write everything to file :)
-    output.stream.write((char*)&header, sizeof(Cx16ExecHeader));
+    // TODO: This should be in linker
+    if(!m_options.f_raw)
+        output.stream.write((char*)&header, sizeof(Cx16ExecHeader));
     output.stream.write(payload.data(), payload.size());
     return true;
 }

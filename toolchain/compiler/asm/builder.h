@@ -9,8 +9,8 @@ namespace assembler
 class Builder
 {
 public:
-    Builder(std::shared_ptr<Block> block)
-    : m_block(block) {}
+    Builder(std::shared_ptr<Block> block, const compiler::Options& options)
+    : m_block(block), m_options(options) {}
 
     bool build();
     void display();
@@ -19,6 +19,7 @@ public:
 
 private:
     std::shared_ptr<Block> m_block;
+    const compiler::Options& m_options;
     RuntimeData m_data;
 };
 
